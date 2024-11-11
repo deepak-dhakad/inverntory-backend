@@ -121,7 +121,55 @@ productTakeTransactionSchema.pre('validate', function (next) {
 
 const ProductTakeTransaction = mongoose.model('ProductTakeTransaction', productTakeTransactionSchema);
 
-// API Endpoints
+const lendenSchema = new mongoose.Schema({
+  name: { type: String, required: true },
+  description: String,
+  date: { type: Date, required: true },
+  transType: { type: String, enum: ['credit', 'debit'], required: true },
+  amount: { type: Number, required: true }
+});
+const Lenden = mongoose.model('Lenden', lendenSchema);
+app.post('/lenden/add', async (req, res) => {
+  const { name, description, date, transType, amount } = req.body;
+  try {
+    const lenden = new Lenden({ name, description, date, transType, amount });
+    await lenden.save();
+    res.status(201).json(lenden);
+  } catch (error) {
+    res.status(400).json({ message: error.message });
+  }
+});
+app.get('/lenden', async (req, res) => {
+  const { startDate, endDate } = req.query;
+  const filter = {};
+
+  if (startDate && endDate) {
+    filter.date = { $gte: new Date(startDate), $lte: new Date(endDate) };
+  }
+
+  try {
+    const lendenRecords = await Lenden.find(filter);
+    res.json(lendenRecords);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+app.delete('/lenden/:id', async (req, res) => {
+  try {
+    await Lenden.findByIdAndDelete(req.params.id);
+    res.status(200).json({ message: 'Transaction deleted successfully' });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+app.put('/lenden/:id', async (req, res) => {
+  try {
+    const updatedTransaction = await Lenden.findByIdAndUpdate(req.params.id, req.body, { new: true });
+    res.status(200).json(updatedTransaction);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
 
 // Add a nominee
 app.get('/nominees/search', async (req, res) => {
