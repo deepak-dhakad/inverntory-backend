@@ -40,6 +40,7 @@ const materialTransactionSchema = new mongoose.Schema({
   nomineeId: { type: mongoose.Schema.Types.ObjectId, ref: 'Nominee' },
   date: { type: Date, default: Date.now },
   product: { type: String, required: true },
+  totalWeight:{ type: Number, required: false },
   netWeight: { type: Number, required: false },
   tunch: { type: Number, required: false },
   wastage: { type: Number, required: false },
@@ -402,6 +403,175 @@ app.post('/login', (req, res) => {
     console.log("Unauthorized Access Attempt"); 
     return res.status(401).json({ success: false, message: 'Invalid credentials' });
   }
+});
+
+// BUYER (Customer)
+const buyerSchema = new mongoose.Schema({
+  name: { type: String, required: true },
+  address: String,
+  mobile: String,
+  gst: String,
+  pan: String,
+  state: String,
+  createdAt: { type: Date, default: Date.now }
+});
+
+// BILL
+const billSchema = new mongoose.Schema({
+  invoiceNo: String,
+  invoiceDate: String,
+  dueDate: String,
+
+  buyer: {
+    name: String,
+    address: String,
+    mobile: String,
+    gst: String,
+    pan: String,
+    state: String
+  },
+
+  items: [
+    {
+      name: String,
+      hsn: String,
+      qty: Number,
+      rate: Number,
+      tax: Number,
+      amount: Number
+    }
+  ],
+
+  subtotal: Number,
+  taxTotal: Number,
+  total: Number,
+
+  terms: String,
+
+  createdAt: { type: Date, default: Date.now }
+});
+
+/* ==========================
+   MODELS
+========================== */
+const Buyer = mongoose.model("Buyer", buyerSchema);
+const Bill = mongoose.model("Bill", billSchema);
+
+/* ==========================
+   BUYER APIs
+========================== */
+
+// ADD BUYER
+app.post("/api/buyers", async (req, res) => {
+  try {
+    const buyer = new Buyer(req.body);
+    await buyer.save();
+    res.json(buyer);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// SEARCH BUYER (for bill page)
+app.get("/api/buyers/search", async (req, res) => {
+  try {
+    const q = req.query.q || "";
+    const buyers = await Buyer.find({
+      name: { $regex: q, $options: "i" }
+    }).limit(10);
+    res.json(buyers);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET ALL BUYERS (optional)
+app.get("/api/buyers", async (req, res) => {
+  const buyers = await Buyer.find().sort({ createdAt: -1 });
+  res.json(buyers);
+});
+app.get("/api/buyers/:id", async (req, res) => {
+  try {
+    const buyer = await Buyer.findById(req.params.id);
+    if (!buyer) {
+      return res.status(404).json({ error: "Buyer not found" });
+    }
+    res.json(buyer);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// UPDATE BUYER
+app.put("/api/buyers/:id", async (req, res) => {
+  try {
+    const buyer = await Buyer.findByIdAndUpdate(
+      req.params.id,
+      req.body,
+      { new: true, runValidators: true }
+    );
+    if (!buyer) {
+      return res.status(404).json({ error: "Buyer not found" });
+    }
+    res.json(buyer);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// DELETE BUYER
+app.delete("/api/buyers/:id", async (req, res) => {
+  try {
+    const buyer = await Buyer.findByIdAndDelete(req.params.id);
+    if (!buyer) {
+      return res.status(404).json({ error: "Buyer not found" });
+    }
+    res.json({ message: "Buyer deleted successfully", buyer });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+/* ==========================
+   BILL APIs
+========================== */
+
+// SAVE BILL
+app.post("/api/bills", async (req, res) => {
+  try {
+    const bill = new Bill(req.body);
+    await bill.save();
+    res.json(bill);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET ALL BILLS
+app.get("/api/bills", async (req, res) => {
+  const bills = await Bill.find().sort({ createdAt: -1 });
+  res.json(bills);
+});
+
+// GET SINGLE BILL (for edit)
+app.get("/api/bills/:id", async (req, res) => {
+  const bill = await Bill.findById(req.params.id);
+  res.json(bill);
+});
+
+// UPDATE BILL
+app.put("/api/bills/:id", async (req, res) => {
+  const bill = await Bill.findByIdAndUpdate(
+    req.params.id,
+    req.body,
+    { new: true }
+  );
+  res.json(bill);
+});
+
+// DELETE BILL
+app.delete("/api/bills/:id", async (req, res) => {
+  await Bill.findByIdAndDelete(req.params.id);
+  res.json({ success: true });
 });
 
 
